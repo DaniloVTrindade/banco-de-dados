@@ -1,0 +1,126 @@
+import sqlite3
+
+# Criar/conectar banco
+conn = sqlite3.connect("loja.db")
+cursor = conn.cursor()
+
+# Criar tabelas
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS Cliente (
+    id_cliente INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    email TEXT NOT NULL
+);
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS Produto (
+    id_produto INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    preco REAL NOT NULL,
+    estoque INTEGER NOT NULL
+);
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS Venda (
+    id_venda INTEGER PRIMARY KEY AUTOINCREMENT,
+    id_cliente INTEGER,
+    total REAL,
+    data_venda TEXT,
+    FOREIGN KEY (id_cliente) REFERENCES Cliente(id_cliente)
+);
+""")
+
+# Inserir clientes
+clientes = [
+    ("Ana", "ana@email.com"),
+    ("Bruno", "bruno@email.com"),
+    ("Carlos", "carlos@email.com"),
+    ("Daniela", "daniela@email.com"),
+    ("Eduardo", "eduardo@email.com")
+]
+
+cursor.executemany("INSERT INTO Cliente (nome, email) VALUES (?, ?)", clientes)
+
+# Inserir produtos
+produtos = [
+    ("Mouse", 50.0, 10),
+    ("Teclado", 120.0, 5),
+    ("Monitor", 900.0, 3),
+    ("Fone", 80.0, 8),
+    ("Notebook", 3500.0, 2)
+]
+
+cursor.executemany("INSERT INTO Produto (nome, preco, estoque) VALUES (?, ?, ?)", produtos)
+
+# Inserir vendas
+vendas = [
+    (1, 50.0, "2026-04-01"),
+    (2, 120.0, "2026-04-02"),
+    (3, 900.0, "2026-04-03")
+]
+
+cursor.executemany("INSERT INTO Venda (id_cliente, total, data_venda) VALUES (?, ?, ?)", vendas)
+
+# Atualizar preço
+cursor.execute("UPDATE Produto SET preco = 60 WHERE id_produto = 1")
+
+# Atualizar estoque
+cursor.execute("UPDATE Produto SET estoque = 15 WHERE id_produto = 1")
+
+# Atualizar nome do cliente
+cursor.execute("UPDATE Cliente SET nome = 'Ana Silva' WHERE id_cliente = 1")
+
+# 1 Todos clientes
+cursor.execute("SELECT * FROM Cliente")
+print("Clientes:", cursor.fetchall())
+
+# 2 Todos produtos
+cursor.execute("SELECT * FROM Produto")
+print("Produtos:", cursor.fetchall())
+
+# 3 Nome e preço
+cursor.execute("SELECT nome, preco FROM Produto")
+print("Nome e Preço:", cursor.fetchall())
+
+# 4 Produtos > 100
+cursor.execute("SELECT * FROM Produto WHERE preco > 100")
+print("Produtos caros:", cursor.fetchall())
+
+# 5 Clientes ordenados
+cursor.execute("SELECT * FROM Cliente ORDER BY nome")
+print("Clientes ordenados:", cursor.fetchall())
+
+def registrar_venda(id_cliente, id_produto, quantidade):
+    # Buscar produto
+    cursor.execute("SELECT preco, estoque FROM Produto WHERE id_produto = ?", (id_produto,))
+    produto = cursor.fetchone()
+
+    preco, estoque = produto
+
+    if estoque >= quantidade:
+        total = preco * quantidade
+
+        # Registrar venda
+        cursor.execute("""
+        INSERT INTO Venda (id_cliente, total, data_venda)
+        VALUES (?, ?, date('now'))
+        """, (id_cliente, total))
+
+        # Atualizar estoque
+        novo_estoque = estoque - quantidade
+        cursor.execute("""
+        UPDATE Produto SET estoque = ?
+        WHERE id_produto = ?
+        """, (novo_estoque, id_produto))
+
+        print("Venda realizada com sucesso!")
+    else:
+        print("Estoque insuficiente!")
+
+# Teste
+registrar_venda(1, 1, 2)
+
+conn.commit()
+conn.close()
